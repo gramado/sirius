@@ -1,5 +1,5 @@
 /*
- * File Name: lvt.c
+ * File Name: files.c
  *
  *
  * BSD 3-Clause License
@@ -34,55 +34,19 @@
  *
  */
  
-#include <os.h>
-extern VOID interrupter(INTN n,UINT32 offset,UINT16 sel,UINT8 dpl );
-extern VOID trap(INTN n,UINT32 offset,UINT16 sel,UINT8 dpl );
 
-extern VOID lvt0();
-extern VOID lvt1();
-extern VOID lvt2();
-extern VOID lvt3();
-extern VOID lvt4();
-
-VOID lvt_function(INTN  n){
-	
-	switch(n - 0x20){
-		
-		case 0: // APIC Timer
-			apic_initial_count_timer(12345);
-		break;
-		case 1: // APIC_LVT_PERFORMANCE
-		
-			OutputString("APIC_LVT_PERFORMANCE\n");
-		break;
-		case 2: // APIC_LVT_LINT0
-			OutputString("APIC_LVT_LINT0\n");
-		break;
-		case 3: // APIC_LVT_LINT1
-			OutputString("APIC_LVT_LINT1\n");
-		break;
-		case 4: // APIC_LVT_ERROR
-
-			OutputString("APIC_LVT_ERROR\n");
-		break;
-		default:
-			print("Default LVT n: %d\n",n - 0x20);
-		break;
-	}
-	
-	apic_eoi_register();
-	
-}
+#include <io.h>
 
 
-VOID lvt_install()
-{
-	REG reg;
-	reg.cs = 8;
-	
-    	interrupter(0x20,(UINTN)lvt0,reg.cs,0);
-	interrupter(0x21,(UINTN)lvt1,reg.cs,0);
-	interrupter(0x22,(UINTN)lvt2,reg.cs,0);
-	interrupter(0x23,(UINTN)lvt3,reg.cs,0);
-	interrupter(0x24,(UINTN)lvt4,reg.cs,0);
+INTN main() {
+
+
+	GW_HAND *gw = CreateWindow(TEXT(" Files "),NULL,50,50,900,600, 
+	GW_STYLE(FORE_GROUND(GW_WHITE) | BACK_GROUND(GW_DARKGRAY) | BACK_GROUND_STYLE(GW_BLUE)),GW_FLAG_VISIBLE);
+
+
+	for(;;)WindowFocus(gw);
+
+	return 0;
+
 }
