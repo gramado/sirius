@@ -1,51 +1,65 @@
 ASFLAGS  :=-f elf32 -O0
-CFLAGS32 :=-Wall -O0 -m32 -ffreestanding -fno-stack-protector -nostdlib -nostdinc -fno-align-functions -I ./lib/include
-LDFLAGS  := -m elf_i386 -T lib/sys/link.ld
+CFLAGS32 :=-Wall -O0 -m32 -ffreestanding -nostdlib -nostdinc -I ./xlib/include
+LDFLAGS  :=-m elf_i386 -T xlib/sys/link.ld
 AS=nasm
 CC=gcc
 LD=ld
 
 
-CONSOLE= setup.o __main.o console.o shell.o string.o gui.o font8x16.o bmp.o
-MSGBOX= setup.o __main.o msgbox.o string.o gui.o font8x16.o bmp.o
-TASK= setup.o __main.o task.o string.o gui.o font8x16.o bmp.o
-GSERVER= setup.o __main.o gserver.o string.o gui.o font8x16.o bmp.o
-FILES= setup.o __main.o files.o string.o gui.o font8x16.o bmp.o
+HEAD	:=xlib/obj/setup.o xlib/obj/crt0.o
+XLIB	:=xlib/xlib.a
+LIB	:=xlib/xlib.so
 
+MSGBOX	:=msgbox.o
+TASK	:=task.o
+GSERVER	:=gserver.o
+XSERVER	:=xserver.o
+FILES	:=files.o
+TERMINAL:=terminal.o
+_SHELL	:=shell.o
+MOUSE	:=mouse.o
+EDIT	:=edit.o
+TEST	:=test.o
 
-.PHONY: console.sys task.sys msgbox.sys gserver.sys files.sys clean move
+DISK	:=disk.o
 
-console.sys: $(CONSOLE)
+.PHONY: task.sys msgbox.sys gserver.sys xserver.sys files.sys terminal.sys shell.sys mouse.sys edit.sys test.bin disk.sys clean move
+
+task.sys: $(HEAD) $(TASK) $(XLIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-task.sys: $(TASK)
+msgbox.sys: $(HEAD) $(MSGBOX) $(XLIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-msgbox.sys: $(MSGBOX)
+gserver.sys: $(HEAD) $(GSERVER) $(XLIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-gserver.sys: $(GSERVER)
+xserver.sys: $(HEAD) $(XSERVER) $(XLIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-files.sys: $(FILES)
+files.sys: $(HEAD) $(FILES) $(XLIB)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-#LIB/SYS
-%.o:lib/sys/%.asm
-	$(AS) $(ASFLAGS) $< -o $@
+terminal.sys: $(HEAD) $(TERMINAL) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
-%.o:lib/sys/%.c
-	$(CC) $(CFLAGS32) -c -o $@ $<
-#GUI
-%.o:lib/gui/%.c
-	$(CC) $(CFLAGS32) -c -o $@ $<
+shell.sys: $(HEAD) $(_SHELL) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
-#LIB
-%.o:lib/%.c
-	$(CC) $(CFLAGS32) -c -o $@ $<
+mouse.sys: $(HEAD) $(MOUSE) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
 
-#CONSOLE
-%.o:console/%.c
+edit.sys: $(HEAD) $(EDIT) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+disk.sys: $(HEAD) $(DISK) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+test.bin: $(HEAD) $(TEST) $(XLIB)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+#LOCAL
+%.o:%.c
 	$(CC) $(CFLAGS32) -c -o $@ $<
 
 #TASK
@@ -63,8 +77,28 @@ files.sys: $(FILES)
 %.o:files/%.c
 	$(CC) $(CFLAGS32) -c -o $@ $<
 
+#TERMINAL
+%.o:terminal/%.c
+	$(CC) $(CFLAGS32) -c -o $@ $<
+
+#SHELL
+%.o:shell/%.c
+	$(CC) $(CFLAGS32) -c -o $@ $<
+#MOUSE
+%.o:mouse/%.c
+	$(CC) $(CFLAGS32) -c -o $@ $<
+
+#EDIT
+%.o:edit/%.c
+	$(CC) $(CFLAGS32) -c -o $@ $<
+
+#UTIL
+%.o:util/%.c
+	$(CC) $(CFLAGS32) -c -o $@ $<
+
 move:
 	-mv *.sys ../bin
+	-mv *.bin ../bin
 
 clean: move
 	rm *.o

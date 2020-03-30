@@ -38,6 +38,9 @@
 THREAD	*current_thread; // A tarefa actualmente em execunção
 THREAD	*thread_ready_queue; // O início da lista.
 
+THREAD	*thread_ring0;
+THREAD	*salve_thread;
+
 // O próximo ID do processo disponível.
 UINTN 	next_pid = 0; 
 
@@ -113,8 +116,20 @@ UINTN initialize_thread()
 
    
     	current_thread->next 	= NULL;
+	current_thread->tail 	= NULL;
 
-	current_thread->flag	= 0;
+	current_thread->status	= 0;
+
+
+
+	current_thread->stdin	= open(0,"stdi");
+	current_thread->stdout	= open(0,"stdo");
+	current_thread->stderr	= open(0,"stdr");
+	current_thread->stdx	= open(0,"std");
+
+
+	thread_ring0 = NULL;
+	salve_thread = NULL;
 
 
 
@@ -138,12 +153,12 @@ UINTN create_thread(	VOID (*main)(),
     	THREAD	*new_thread	=(THREAD*)malloc(sizeof(THREAD)); 
     	new_thread->pid 	= next_pid++;
 
-    	new_thread->eax 	= eax;
-    	new_thread->ebx 	= ebx;
-    	new_thread->ecx 	= ecx;
-    	new_thread->edx 	= edx;
-    	new_thread->edi 	= 0;
-    	new_thread->esi 	= new_thread->pid;
+    	new_thread->eax 	= eax;	// argv	
+    	new_thread->ebx 	= ebx;	// bootinfo
+    	new_thread->ecx 	= ecx;	// stdx
+    	new_thread->edx 	= edx; 	// stdin
+    	new_thread->edi 	= 0;	// stdout
+    	new_thread->esi 	= 0;	// stderr
     	new_thread->ebp 	= 0;
     	new_thread->esp 	= esp;
 	new_thread->eip  	= (UINT32)main;
@@ -159,6 +174,8 @@ UINTN create_thread(	VOID (*main)(),
 
 	new_thread->prv = 1;
 
+	new_thread->esp0   	= esp0;
+
     	}
 
 	if(!(privileg&1)){ // processo do kernelspace
@@ -171,6 +188,8 @@ UINTN create_thread(	VOID (*main)(),
 	
 	new_thread->prv = 0;
 
+	new_thread->esp0   	= 0;
+
     	}
 
 	if(privileg&2) new_thread->_static = 1;
@@ -180,8 +199,6 @@ UINTN create_thread(	VOID (*main)(),
 	new_thread->eflag 	= 0x3202;
     	new_thread->cr3 	= (UINT32)page_directory;
 
-	new_thread->esp0   	= esp0;
-
 
 	new_thread->pd   	= (PAGE_DIRECTORY*)page_directory;
 
@@ -189,9 +206,131 @@ UINTN create_thread(	VOID (*main)(),
 	new_thread->pt   	= (PAGE_TABLE*)((UINTN)(page_directory[d].addrpt << 12));
 
     	new_thread->next 	= NULL;
+	new_thread->tail 	= NULL;
 
-	new_thread->flag	= 0;
+	new_thread->status	= 0;
 
+	new_thread->stdin	= open(0,"stdi");
+	new_thread->stdout	= open(0,"stdo");
+	new_thread->stderr	= open(0,"stdr");
+	new_thread->stdx	= open(0,"stdi");
+
+	new_thread->edx 	= (unsigned int) new_thread->stdin;
+	new_thread->edi 	= (unsigned int) new_thread->stdout;
+	new_thread->esi 	= (unsigned int) new_thread->stderr;
+	new_thread->ecx		= (unsigned int) new_thread->stdx;
+
+    
+     
+    	// Adicionar novo elemento, no final da lista
+    	// tmp aponta para inicio da lista
+    	THREAD *tmp = thread_ready_queue;
+    	while (tmp->next)
+    	tmp = tmp->next;
+    
+    	tmp->next = new_thread;
+
+
+	// Ring0
+	if(privileg&0x80) {
+
+		if(!thread_ring0) thread_ring0 = new_thread;
+
+	}
+
+
+   	return (new_thread->pid);
+}
+
+// processo filho
+UINTN create_thread_child(THREAD	*thread,	
+			VOID (*main)(),
+			PAGE_DIRECTORY *page_directory,
+			UINT32 eax,
+			UINT32 ebx,
+			UINT32 ecx,
+			UINT32 edx,
+			UINT32 esp,
+			UINT32 esp0,
+			UINT8 privileg)
+{
+
+	if(!thread)return 0;
+
+    	THREAD	*new_thread	=(THREAD*)malloc(sizeof(THREAD)); 
+    	new_thread->pid 	= next_pid++;
+
+	new_thread->eax 	= eax;	// argv	
+    	new_thread->ebx 	= ebx;	// bootinfo
+    	new_thread->ecx 	= ecx;	// stdx
+    	new_thread->edx 	= edx; 	// stdin
+    	new_thread->edi 	= 0;	// stdout
+    	new_thread->esi 	= 0;	// stderr
+    	new_thread->ebp 	= 0;
+    	new_thread->esp 	= esp;
+	new_thread->eip  	= (UINT32)main;
+
+    	if((privileg&1) == 1) { // processo do userspace
+    	new_thread->cs	= 0x1B;
+    	new_thread->ds 	= 0x23;
+    	new_thread->es 	= 0x23;
+    	new_thread->fs 	= 0x23;
+    	new_thread->gs 	= 0x23;
+    	new_thread->ss 	= 0x23;
+
+
+	new_thread->prv = 1;
+
+	new_thread->esp0   	= esp0;
+
+    	}
+
+	if(!(privileg&1)){ // processo do kernelspace
+    	new_thread->cs 	= 0x8;
+    	new_thread->ds 	= 0x10;
+    	new_thread->es 	= 0x10;
+    	new_thread->fs 	= 0x10;
+    	new_thread->gs 	= 0x10;
+    	new_thread->ss 	= 0x10;
+	
+	new_thread->prv = 0;
+
+	new_thread->esp0   	= 0;
+
+    	}
+
+	if(privileg&2) new_thread->_static = 1;
+	else new_thread->_static = 0;
+	
+   
+	new_thread->eflag 	= 0x3202;
+    	new_thread->cr3 	= (UINT32)page_directory;
+
+	new_thread->pd   	= (PAGE_DIRECTORY*)page_directory;
+
+	UINTN d = (UINTN) (APP_VIRTUAL_ADDRESS >> 22 &0x3FF);
+	new_thread->pt   	= (PAGE_TABLE*)((UINTN)(page_directory[d].addrpt << 12));
+
+    	new_thread->next 	= NULL;
+	new_thread->tail 	= NULL;
+	new_thread->alpha	= thread;
+
+	new_thread->status	= 1;
+
+	new_thread->stdin	= thread->stdin;
+	new_thread->stdout	= thread->stdout;
+	new_thread->stderr	= thread->stderr;
+	new_thread->stdx	= thread->stdx;
+
+	new_thread->edx 	= (unsigned int) new_thread->stdin;
+	new_thread->edi 	= (unsigned int) new_thread->stdout;
+	new_thread->esi 	= (unsigned int) new_thread->stderr;
+	new_thread->ecx		= (unsigned int) new_thread->stdx;
+
+	
+
+
+	thread->tail = new_thread;
     
      
     	// Adicionar novo elemento, no final da lista
@@ -205,6 +344,7 @@ UINTN create_thread(	VOID (*main)(),
 
    	return (new_thread->pid);
 }
+
 
 
 VOID task_switch(VOID){
@@ -236,13 +376,30 @@ VOID task_switch(VOID){
 
 	}else exit_thread = 0;
 
+
+_switch:
     	// Pula, se ainda não tiver 
     	// a tarefa inicializada...
     	if (!current_thread) goto end;
     	else{
+		// Obter a próxima tarefa a ser executada.
 
-    	// Obter a próxima tarefa a ser executada.
-    	current_thread 	= current_thread->next;
+		// priority
+		if((!salve_thread) && (thread_ring0)) {
+
+			salve_thread = current_thread;
+
+			current_thread = thread_ring0;
+	
+
+		} else if(salve_thread) {
+
+			current_thread = salve_thread;
+
+    			current_thread 	= current_thread->next;
+			salve_thread = NULL;
+
+		}else current_thread 	= current_thread->next;
 
     	// Se caímos no final da lista vinculada, 
     	// comece novamente do início.
@@ -250,6 +407,20 @@ VOID task_switch(VOID){
     	current_thread = thread_ready_queue->next;
 
     	}
+
+
+
+	// teste de execuncao
+
+	if (current_thread->status&0x2)  //processo bloqueado
+	{
+
+		goto _switch;
+
+	}
+
+
+
 
     	// Restaura o contexto da próxima
     	// tarefa a ser executada...
@@ -281,7 +452,7 @@ VOID task_switch(VOID){
 
 
     	// stack esp0
-	tss_esp0(context_esp0);
+	if(context_esp0)tss_esp0(context_esp0);
 
 	load_page_diretory((PAGE_DIRECTORY *)(context_cr3));
 	flush_tlb();
@@ -308,3 +479,74 @@ UINTN getcr3()
 {
     return current_thread->cr3;
 }
+
+
+int lockthread()
+{
+	return (current_thread->status |= 0x2);
+
+}
+
+int unlockthread(unsigned int pid)
+{
+
+	THREAD	*thread = thread_ready_queue;
+
+		
+	while(thread) {
+
+		if(thread->pid == pid)
+		{
+			return (thread->status &=~0x2);
+
+		} else thread = thread->next;
+	}
+
+	return 0;
+
+}
+
+
+
+void taskswitch_pid(unsigned int pid)
+{
+
+	THREAD	*thread = thread_ready_queue;
+
+		
+	while(thread) {
+
+		if(thread->pid == pid)
+		{
+
+			// task switch
+			return;
+
+		} else thread = thread->next;
+	}
+
+
+
+
+}
+
+int cheksum_pid(unsigned int pid) {
+
+	THREAD *thread 	= thread_ready_queue;
+
+	while(thread) 
+	{
+		if(thread->pid == pid) return thread->pid;
+		else if(thread->pid > pid) return 0;
+
+		thread = thread->next;
+	}
+
+
+	return 0;
+
+}
+
+
+
+

@@ -40,11 +40,14 @@ ATA ata[4];
 PCI_COFIG_SPACE *ata_pci = NULL;
 UINTN ata_record_dev,ata_record_channel;
 
-VOID ata_wait(UINTN val)
-{ 
-	val/=100;
-   	
-	while(val--) __asm__ __volatile__("out %%al,$0x80"::);
+VOID ata_wait(UINTN p)
+{
+	if(p > 3) return;
+
+	inportb(ata[p].cmd_block_base_addr + ATA_REG_STATUS);
+	inportb(ata[p].cmd_block_base_addr + ATA_REG_STATUS);
+	inportb(ata[p].cmd_block_base_addr + ATA_REG_STATUS);
+	inportb(ata[p].cmd_block_base_addr + ATA_REG_STATUS);
 }
 
 
@@ -103,7 +106,7 @@ VOID ata_cmd_write(UINTN p,UINTN cmd)
     	// no_busy      	
 	ata_wait_not_busy(p);
 	outportb(ata[p].cmd_block_base_addr + ATA_REG_CMD,cmd);
-	ata_wait(400);  // Esperamos 400ns
+	ata_wait(p);  // Esperamos 400ns
 
 }
 
@@ -275,12 +278,12 @@ static UINTN detect_devtype (UINTN p)
     
     	// Select device,
     	outportb(ata[p].cmd_block_base_addr + ATA_REG_DEVSEL,0xA0| ata[p].dev_num << 4);
-	ata_wait(400);
+	ata_wait(p);
 
 	ata_wait_not_busy(p);
 
 	ata_cmd_write(p,ATA_CMD_IDENTIFY_DEVICE);
-	ata_wait(400);
+	ata_wait(p);
 	
 
 	spin = 1000000;
@@ -330,13 +333,16 @@ static UINTN ata_identify_device(UINTN p,UINT16 *buffer)
         	ata[p].lba_type	= (buffer[83]&0x0400)? ATA_LBA48:ATA_LBA28;
         	ata[p].mode 	= ATA_PIO_MODO;//FIXME(buffer[49]&0x0100)? ATA_DMA_MODO:ATA_PIO_MODO;
 		ata[p].bps 	= 512; 
+		// Total number of sectors = LBA28 60-61, LBA48 100-103
+		ata[p].sectors	= buffer[60] &0xffff;
+		ata[p].sectors	+= buffer[61] << 16 &0xffffffff;
 
 			break;
 
 		case ATADEV_PATAPI:
 		print("Uinidade%d PATAPI\n",p);
 		ata_cmd_write(p,ATA_CMD_IDENTIFY_PACKET_DEVICE);
-        	ata_wait(400);
+        	ata_wait(p);
         	ata_wait_drq(p); 
         	ata_pio_read(p,buffer,512);
         	ata_wait_not_busy(p);
@@ -347,7 +353,9 @@ static UINTN ata_identify_device(UINTN p,UINT16 *buffer)
 		ata[p].dev_type	=(buffer[0]&0x8000)? ATADEV_PATAPI : 0xffff;
         	ata[p].lba_type	= ATA_LBA28;
         	ata[p].mode 	= ATA_PIO_MODO;//FIXME(buffer[49]&0x0100)? ATA_DMA_MODO:ATA_PIO_MODO;
-        	ata[p].bps 	= 2048; 
+        	ata[p].bps 	= 2048;
+
+		ata[p].sectors	= 0; 
 
 			break;
 
@@ -366,7 +374,7 @@ static UINTN ata_identify_device(UINTN p,UINT16 *buffer)
 			break;
 		case ATADEV_UNKNOWN:
 		ata[p].dev_type	= ATADEV_UNKNOWN;
-		print("Uinidade%d Not fount\n",p);
+		print("Uinidade%d Not found\n",p);
 
 			break;
 
@@ -392,7 +400,7 @@ static VOID set_ata_device_and_sector(UINTN p,UINTN count,UINT64 addr)
         	outportb(ata[p].cmd_block_base_addr + ATA_REG_DEVSEL,0x40 |(ata[p].dev_num<<4) | ((UINT8)(addr>>24 &0x0f)));
         	// verifique se e a mesma unidade para nao esperar pelos 400ns
         	if(ata_record_dev != ata[p].dev_num && ata_record_channel != ata[p].channel) {
-            	ata_wait(400);
+            	ata_wait(p);
             	//verifique erro
             	ata_record_dev      = ata[p].dev_num;
             	ata_record_channel  = ata[p].channel;}
@@ -411,7 +419,7 @@ static VOID set_ata_device_and_sector(UINTN p,UINTN count,UINT64 addr)
         	outportb(ata[p].cmd_block_base_addr + ATA_REG_DEVSEL,0x40 | ata[p].dev_num<<4);   
         	// verifique se e a mesma unidade para nao esperar pelos 400ns
         	if(ata_record_dev != ata[p].dev_num && ata_record_channel != ata[p].channel) {
-            	ata_wait(400);
+            	ata_wait(p);
             	//verifique erro
             	ata_record_dev      = ata[p].dev_num;
             	ata_record_channel  = ata[p].channel;}
@@ -485,6 +493,79 @@ UINTN ata_read_sector(	IN UINTN p,
 
 }
 
+UINTN ata_write_sector(	IN UINTN p,
+			IN UINTN count,
+			IN UINT64 addr,
+			OUT VOID *buffer)
+{   
+   
+
+	switch(ata[p].dev_type) {
+
+		case ATADEV_UNKNOWN:
+		return -1;
+			break;
+
+		case ATADEV_PATA:
+
+		//select device, lba, count
+        	set_ata_device_and_sector(p,count,addr);
+		
+     		switch(ata[p].mode) 
+		{
+
+			case ATA_PIO_MODO:
+			switch(ata[p].lba_type) 
+			{
+				case ATA_LBA28:
+				ata_cmd_write(p,ATA_CMD_WRITE_SECTORS);
+					break;
+				case ATA_LBA48:
+				ata_cmd_write(p,ATA_CMD_WRITE_SECTORS_EXT);
+					break;
+
+			}
+
+			//ata_wait_irq(ata[p].irq); //FIXME IRQs
+            		ata_wait_not_busy(p);
+            		if(ata_wait_drq(p) != 0)return -1;
+            		ata_pio_write(p,buffer,ata[p].bps);
+
+            		//Flush Cache
+			switch(ata[p].lba_type) 
+			{
+				case ATA_LBA28:
+				ata_cmd_write(p,ATA_CMD_FLUSH_CACHE);
+					break;
+				case ATA_LBA48:
+				ata_cmd_write(p,ATA_CMD_FLUSH_CACHE_EXT);
+					break;
+
+			}
+
+            		ata_wait_not_busy(p);
+            		if(ata_wait_no_drq(p) != 0)return -1;
+
+				break;
+
+			case ATA_DMA_MODO:
+			return -1;
+				break;
+
+		}
+			break;
+
+		case ATADEV_PATAPI:
+		return -1;
+			break;
+
+	}
+        	
+        return 0;
+
+
+}
+
 UINTN ata_initialize()
 {
 	UINTN p;
@@ -538,3 +619,13 @@ UINTN ata_initialize()
                                                                                                  
 }
 
+
+unsigned int ata_sectors(int devnum)
+{
+	return ata[devnum].sectors;
+}
+
+unsigned int ata_bps(int devnum)
+{
+	return ata[devnum].bps;
+}

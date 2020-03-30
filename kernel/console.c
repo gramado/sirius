@@ -212,6 +212,106 @@ print(CONST CHAR8 *format,...)
 
 
 
+// FIXME 
+char *dp_str = (char*)0x00800000;
+
+void dp_init(){
+
+	setmem(dp_str,0x20000,0);
+
+}
+
+void dputs(char *str)
+{
+	if(dp_str >= (char*)0x00820000 )return;
+	char *p_str = str;
+
+	while(*p_str) *dp_str++ = *p_str++;
+	
+}
+
+UINTN  
+dprintf(CONST CHAR8 *format,...) 
+{
+	UINTN rc = 0;
+	
+
+	VOID* ap;
+	va_start (ap,format);
+	INTN index = 0;	
+	INTN d;
+	INTN c;
+	CHAR8 *s;
+	char str[256];
+	char buffer[256];
+	CHAR8 *p_strig  =(CHAR8*) str;
+	setmem(p_strig,256,0);
+
+	while ((*(CHAR8*)(format + index))/*format[index]*/)
+	{
+		switch ((*(CHAR8*)(format + index))/*format[index]*/)
+		{
+		case '%':
+			++index;
+			switch ((*(CHAR8*)(format + index))/*format[index]*/)
+			{
+			
+				case 'C':
+				case 'c':
+				c = (CHAR8) va_arg (ap, INTN);
+				*p_strig++ = c;
+				break;
+     
+				case 'S':
+				case 's':
+				s = va_arg (ap, CHAR8*);
+				while(*s)*p_strig++ = *s++;
+				break;
+
+				case 'd':
+				case 'i':
+				d = va_arg (ap, UINTN);
+				atoi(d, buffer);
+				s = (CHAR8*)buffer;
+				while(*s)*p_strig++ = *s++;
+				break;
+
+				case 'X':
+				case 'x':
+				d = va_arg (ap, INTN);
+				i2hex(d, buffer,HEX_LEN);
+				s = (CHAR8*)buffer;
+				while(*s)*p_strig++ = *s++;
+				break;
+			
+				default:
+				*p_strig++ = '%';
+				*p_strig++ = '%';
+				break;
+				
+			}
+			break;
+
+		default:
+		c = (*(CHAR8*)(format + index));/*format[index]*/
+		
+		*p_strig++ = c;
+		
+		break;
+		}
+		++index;
+    }
+	
+	
+	dputs(str);
+	return rc;
+}
+
+
+
+
+
+
 
 
 

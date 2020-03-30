@@ -64,20 +64,6 @@
 
 
 #include "typ.h"
-typedef struct _FOCUS 
-	{
-	UINTN 			pid;
-	PHYSICAL_ADDRESS 	pd;
-	
-
-	}__attribute__((packed)) FOCUS;
-
-typedef struct _FRAME 
-	{
-	UINT16	offset; //block
-	struct _FRAME *next;
-
-	}__attribute__((packed)) FRAME;
 #include "io.h"
 #include "cpuid.h"
 #include "paging.h"
@@ -93,6 +79,8 @@ typedef struct _FRAME
 #include "mbr.h"
 #include "fs/vfs.h"
 #include "fs/fat.h"
+// LIB
+#include "lib/lib.h"
 
 
 
@@ -101,6 +89,8 @@ typedef struct _FRAME
 	cli();\
 	print(format, ##__VA_ARGS__);\
 	sti();} 
+
+#define HEADER_MAGIC 0x454C4F43
 
 
 
@@ -126,6 +116,10 @@ extern 	THREAD		*thread_focus;
 extern 	UINTN		key_msg_focos;
 extern 	UINTN		key_msg_exec_console;
 
+extern UINTN	_end();
+extern unsigned char *ZERO;
+extern unsigned char *__vfsbuf__;
+
 // CHAT
 extern CHAT *ready_queue_host_chat, *host_chat;
 
@@ -134,8 +128,10 @@ extern 	UINT32 		UID;
 extern 	UINT32 		DEV;
 
 //APP USE
-extern UINT16 		*key;
+// Ponteiros para o USER mode 
+extern UINT32 		*GwFocus;
 extern MOUSE 		*mouse;
+extern UINT32 		*rtc;
 
 // console
 extern CHAR8 *__buffer__;
@@ -144,18 +140,27 @@ extern CHAR8 *__string__;
 
 // FAT
 extern VOID 		*FAT;
-extern FAT_BPB 		*bpb;
-extern FAT_DIRECTORY 	*root;
-extern FAT_DATA 	*data;
-extern VFS 		*vfs;
+extern FAT_BPB 		*__bpb__;
+extern FAT_DIRECTORY 	*__root__;
+extern FAT_DATA 	*__data__;
+extern VFS 		*__vfs__;
+
+
+
+// FILE
+extern unsigned int *device;
+extern FILE *sd;
+extern FILE *xserver;
+extern FILE *gserver;
 
 
 // OS
 VOID wait_ns(UINTN count);
+
 // Memory
-UINTN ram_initialize();
-UINTN alloc_frame(IN OUT PAGE_TABLE *pt,IN UINTN size,OUT VIRTUAL_ADDRESS *frame);
-UINTN free_frame(IN VOID *frame);
+unsigned int ram_initialize(); 
+int alloc_frame(PAGE_TABLE *pt,int count,VIRTUAL_ADDRESS *frame);
+void free_frame(void *frame);
 
 UINTN alloc_pages_initialize();
 
@@ -174,9 +179,14 @@ VOID *malloc(UINTN size);
 VOID free(VOID *buffer);
 
 // System
+VOID initialize_gui();
+
 UINTN gdt_install(VOID);
 UINTN idt_install(VOID);
 
+UINTN do_exec(CONST CHAR8 *name,UINT8 prv);
+UINTN do_exec_child(THREAD *father_thread,CONST CHAR8 *name,UINT8 prv);
+int exit();
 
 //  MSR
 UINTN 
@@ -223,8 +233,8 @@ print(CONST CHAR8 *format,...);
 
 
 //disk
-VOID initialize_gui();
 UINTN read_sector(UINTN p,UINTN count,UINT64 addr,VOID *buffer);
+UINTN write_sector(UINTN p,UINTN count,UINT64 addr,VOID *buffer);
 
 //Media
 UINTN Read(IN VFS *vfs,OUT VOID *buffer);
@@ -243,6 +253,23 @@ UINTN media_initialize();
 UINTN file_read(OUT VOID *buf,IN CHAR8 *name);
 UINTN file_write(IN VOID *buf,CHAR8 *name);
 
+
+
+//FIXME
+UINTN  
+dprintf(CONST CHAR8 *format,...);
+
+
+// Exectve
+
+int exectve(int argc,char **argv,char *pwd,FILE *fp);
+int exectve_child(int argc,char **argv,char *pwd,FILE *fp,THREAD *father_thread);
+
+
+// Devices
+int conect_sd(int dev);
+SD *read_sdx(const char *s);
+SD *read_sdn(const char *s,SD *sdx);
 
 
 #endif

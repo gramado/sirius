@@ -101,8 +101,52 @@ typedef struct _MOUSE {
 	UINT32	y;
 	UINT32	z;
 	UINT32	b;
+	UINT32	handle;
 
 }__attribute__((packed)) MOUSE;
+
+
+typedef struct _HEADER {
+
+	UINT32	magic;
+	UINT32	eflag;
+	UINT32  header;
+	UINT32	start;
+	UINT32	stack;
+	UINT32	end;
+
+}__attribute__((packed)) HEADER;
+
+typedef struct _VFS FILE;
+
+typedef struct _FOCUS 
+	{
+	UINTN 			pid;
+	PHYSICAL_ADDRESS 	pd;
+	
+
+	}__attribute__((packed)) FOCUS;
+
+typedef struct _FRAME 
+	{
+	UINT16	offset; //block
+	struct _FRAME *next;
+
+	}__attribute__((packed)) FRAME;
+
+
+typedef struct _SD {
+	char id[4];
+	unsigned int devnum;
+	unsigned int UID;
+	unsigned int partnum;
+	unsigned int lba_start;
+	unsigned int lba_end;
+	unsigned int num_sectors;
+	unsigned short byte_of_sector;
+	unsigned short pid;
+
+}__attribute__((packed)) SD;
 
 
 

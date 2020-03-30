@@ -45,19 +45,34 @@ UINT32 DEV = 0;
 UINT32 global_controll_task_switch = 1;
 
 
-//APP USE
 
-UINT16 *key = (UINT16*)0x10001100;
-MOUSE *mouse = (MOUSE*)0x800000;
 
-FAT_BPB *bpb = NULL;
-FAT_DIRECTORY *root = NULL;
-FAT_DATA *data = NULL;
-VFS *vfs = NULL;
+
+unsigned char *ZERO = NULL;
+
+FAT_BPB *__bpb__ = NULL;
+FAT_DIRECTORY *__root__ = NULL;
+FAT_DATA *__data__ = NULL;
+VFS *__vfs__ = NULL;
+unsigned char *__vfsbuf__ = NULL;
 
 
 //CHAT
 CHAT *ready_queue_host_chat, *host_chat;
+
+
+
+// APP USE
+// Ponteiros para user mode
+UINT32 *GwFocus = NULL;
+MOUSE *mouse 	= NULL;
+UINT32 *rtc	= NULL;
+
+
+unsigned int *device = NULL;
+FILE *sd = NULL;
+FILE *xserver = NULL;
+FILE *gserver = NULL; 
 
 
 

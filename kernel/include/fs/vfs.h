@@ -38,6 +38,10 @@
 #ifndef __VFS_H__
 #define __VFS_H__
 
+#define ATTR_ARCHIVE 	0
+#define ATTR_DIRECTORY 	1
+
+struct _FAT_BPB;
 
 typedef struct _VFS_FILE_HEADER 
 {
@@ -45,22 +49,34 @@ typedef struct _VFS_FILE_HEADER
 	CHAR8	filename[256];
 	UINT8 	attr;
 	UINT32	size;
+	UINT32	size2;
 	UINT8	dev;
 	UINT8	p_entry;
-	UINT16	bps;
-	UINT8	count;	// numeros de sector por bloco
-	UINT32	blocks;
-	UINT8	rsv[256 - 14];
+	UINT32	bps;
+	// números de sector por bloco
+	UINT32	count;
+	// número total de blocos
+	UINT32	blocks;	
+	UINT32	offset;
+	UINT32	offset2;
+	UINT32	buffer;
+	// definido em libc padrão
+	UINT8	mode[4];
+	UINT8	flag;
+	struct _FAT_BPB  *bpb; 
+	struct _VFS_FILE_HEADER *current;
+	struct _VFS_FILE_HEADER *next;
+	UINT8	rsvx[256 - 43];
 
 }__attribute__ ((packed)) VFS_FILE_HEADER;
 
 typedef struct _VFS 
 {
-	// File Header 4 KiB
+	// File Header 512 Bytes
 	VFS_FILE_HEADER header;
 
 	// LBA block start
-	UINT32	block[1];
+	UINT32	block[1024-128];
 
 }__attribute__ ((packed)) VFS;
 

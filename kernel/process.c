@@ -38,11 +38,14 @@
 
 FOCUS 	*focus		= NULL;
 THREAD	*thread_focus 	= NULL;
+THREAD	*zzzz_		= NULL;
 UINTN	key_msg_focos   = 0; 
-UINTN	key_msg_exec_console   = 0; 
+UINTN	key_msg_exec_console   = 0;
+
 
 UINTN initialize_focus()
 {
+
 	thread_focus = thread_ready_queue;
 
 	focus = (FOCUS*)malloc(sizeof(FOCUS));
@@ -80,6 +83,7 @@ UINTN set_focus(UINTN pid)
 	focus->pd = p->cr3;
 	focus->pid = p->pid;
 
+	zzzz_ = p;
 
 
 	return 0;
@@ -93,6 +97,8 @@ UINTN msg_set_focus()
 	do {
 		if((thread_focus->prv == 1) && (thread_focus->pid != focus->pid )) 
 		{
+
+			zzzz_ = thread_focus;
 			break;
 
 		}
@@ -102,7 +108,7 @@ UINTN msg_set_focus()
 		if(!(thread_focus) && (!(x))) {
 			thread_focus = thread_ready_queue;
 			x++;
-		} else return -1;
+		} else { zzzz_ = NULL; return -1;}
 		
 	}while(TRUE);
 
@@ -110,6 +116,7 @@ UINTN msg_set_focus()
 	focus->pid = thread_focus->pid;
 
 	key_msg_focos  = 0;
+
 
 	return 0;
 }
