@@ -97,9 +97,9 @@ typedef struct {
 
 typedef struct _MOUSE {
 
-	UINT32	x;
-	UINT32	y;
-	UINT32	z;
+	int	x;
+	int	y;
+	int	z;
 	UINT32	b;
 	UINT32	handle;
 
@@ -112,6 +112,7 @@ typedef struct _HEADER {
 	UINT32	eflag;
 	UINT32  header;
 	UINT32	start;
+	UINT32	argv;
 	UINT32	stack;
 	UINT32	end;
 

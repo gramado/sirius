@@ -66,13 +66,17 @@ CHAT *ready_queue_host_chat, *host_chat;
 // Ponteiros para user mode
 UINT32 *GwFocus = NULL;
 MOUSE *mouse 	= NULL;
-UINT32 *rtc	= NULL;
+UINT8 *rtc	= NULL;
 
 
 unsigned int *device = NULL;
 FILE *sd = NULL;
 FILE *xserver = NULL;
-FILE *gserver = NULL; 
+FILE *gserver = NULL;
+
+
+// lock
+unsigned int *system_lock = NULL; 
 
 
 

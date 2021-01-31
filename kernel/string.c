@@ -37,9 +37,11 @@
 
 UINTN strlen(CONST CHAR8 *s)
 {
-	CHAR8 *tmp = (CHAR8*)s;
-	while(*tmp++ != '\0');
-	return (UINTN)(tmp - s);
+	char *tmp = (char*)s;
+	
+	while(*tmp != '\0')tmp++;
+
+	return (size_t)(tmp - s);
 }
 
 VOID  *copymem(IN VOID *Destination,IN VOID *Source,IN UINTN Length)
@@ -106,5 +108,29 @@ UINTN strncmp (CHAR8* Destination,CONST CHAR8* Source,UINTN count)
 	break;
 
 	return (count);
+}
+
+
+void  *memcpy(void *dest,const void *src,unsigned len)
+{	
+
+	int i;
+	unsigned char *p_dest = (unsigned char *)dest;
+	unsigned char *p_src  = (unsigned char *)src;
+	
+
+	for(i =0; i<len;i++)*p_dest++ = *p_src++;
+		
+
+	return dest;
+}
+
+
+void *memset(void *buffer,int val,unsigned count)
+{
+	unsigned char *tmp = (unsigned char *) buffer;
+
+    	for(; count != 0; count--) *tmp++ = val;
+	return buffer;
 }
 

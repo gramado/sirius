@@ -90,7 +90,7 @@ UINTN do_exec(CONST CHAR8 *name,UINT8 prv)
 	}
 
 
-	int filesize = fpx->header.size;
+	int filesize = fpx->size;
 	int physize = (header->end -  (header->start - 0x1000));	
 
 
@@ -180,7 +180,8 @@ UINTN do_exec(CONST CHAR8 *name,UINT8 prv)
 		
 
 
-		if((prv&1) == 1)esp0 =(UINT32)(&stack_esp_0);/*(UINTN)malloc(0x2000);*/
+		if((prv&1) == 1)esp0 = (UINTN)malloc(0x2000);
+		else esp0 =(UINT32)(&stack_esp_0);
 
 		pid = create_thread((void*)(header->start),pd,0,(header->start + 0x20)/*Boot info*/,0,0,header->stack,\
 			esp0/*ESP0*/,prv);
@@ -262,7 +263,7 @@ UINTN do_exec_child(THREAD *father_thread,CONST CHAR8 *name,UINT8 prv)
 	}
 
 
-	int filesize = fpx->header.size;
+	int filesize = fpx->size;
 	int physize = (header->end -  (header->start - 0x1000));	
 
 
@@ -352,7 +353,8 @@ UINTN do_exec_child(THREAD *father_thread,CONST CHAR8 *name,UINT8 prv)
 		*p++	= (UINT32) rtc;
 
 
-		if((prv&1) == 1)esp0 =(UINT32)(&stack_esp_0);/*(UINTN)malloc(0x2000);*/
+		if((prv&1) == 1)esp0 = (UINTN)malloc(0x2000);
+		else esp0 =(UINT32)(&stack_esp_0);
 
 		pid = create_thread_child(father_thread,(void*)(header->start),pd,0,(header->start + 0x20)/*Boot info*/,0,0,header->stack,\
 			esp0/*ESP0*/,prv);

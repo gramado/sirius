@@ -131,7 +131,7 @@ extern 	UINT32 		DEV;
 // Ponteiros para o USER mode 
 extern UINT32 		*GwFocus;
 extern MOUSE 		*mouse;
-extern UINT32 		*rtc;
+extern UINT8 		*rtc;
 
 // console
 extern CHAR8 *__buffer__;
@@ -154,6 +154,10 @@ extern FILE *xserver;
 extern FILE *gserver;
 
 
+// lock
+extern unsigned int *system_lock;
+
+
 // OS
 VOID wait_ns(UINTN count);
 
@@ -174,9 +178,13 @@ UINTN mem_map(	IN PHYSICAL_ADDRESS phy_addr,
 		OUT VIRTUAL_ADDRESS *virt_addr,
 		IN UINTN size,
 		IN UINTN flag);
+int mm_mp( unsigned int phy_addr, unsigned int *virt_addr,unsigned size, int flag);
 
 VOID *malloc(UINTN size);
 VOID free(VOID *buffer);
+
+void  *memcpy(void *dest,const void *src,unsigned len);
+void *malloc_virtual_to_physical(unsigned size,void *ptr);
 
 // System
 VOID initialize_gui();
@@ -217,6 +225,8 @@ UINTN strncmp (CHAR8* Destination,CONST CHAR8* Source,UINTN count);
 extern VOID __copymem(VOID *dest, VOID *src, UINTN Length);
 extern VOID __setmem(VOID *dest, UINT32 val, UINTN Length);
 
+void *memset(void *buffer,int val,unsigned count);
+
 
 
 // console
@@ -233,8 +243,8 @@ print(CONST CHAR8 *format,...);
 
 
 //disk
-UINTN read_sector(UINTN p,UINTN count,UINT64 addr,VOID *buffer);
-UINTN write_sector(UINTN p,UINTN count,UINT64 addr,VOID *buffer);
+int read_sector(int dev,unsigned count,unsigned long long addr,void *buffer);
+int write_sector(int dev,unsigned count,unsigned long long addr,void *buffer);
 
 //Media
 UINTN Read(IN VFS *vfs,OUT VOID *buffer);

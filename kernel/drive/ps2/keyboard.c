@@ -118,11 +118,7 @@ UINT8 ascii_maiusculas[256] = {
 UINT8 keyboard_read()
 {
 	kbdc_wait(0);
-	
-	UINT8 rc = inportb(0x60);
-    	wait_ns(200);
-
-    	return (rc);
+	return inportb(0x60);
 
 }
 
@@ -131,15 +127,12 @@ UINT8 keyboard_read()
 VOID keyboard_write(UINT8 write){
 
 	kbdc_wait(1);
-
 	outportb(0x60,write);
-    	wait_ns(200);
-
 }
 
 
 // Esta rotina faz o Auto-teste 0xaa êxito, 0xfc erro
-static UINTN KEYBOARD_BAT_TEST(){
+UINTN KEYBOARD_BAT_TEST(){
     
     	UINT8 val;
 
@@ -163,36 +156,16 @@ static UINTN KEYBOARD_BAT_TEST(){
 }
 
 
-UINTN keyboard_install(){
+void keyboard_install(){
 
-    	//Reseta o teclado
-	kbdc_wait(1);
-	outportb(0x60,KBDC_RESET);
-	wait_ns(200);
-	
-    	// Espera os dados descer, ACK
-    	while(keyboard_read() != KBDC_ACK);
-    
-    	// Basic Assurance Test (BAT)
-    	if(KEYBOARD_BAT_TEST() != 0) {
+	// set current scan code set
+	//keyboard_write(0xF0);
+	// Set scan code set 2
+	//keyboard_write(2);
+	//keyboard_read();  // ACK
 
-    	// Nelson aqui precisaremos de criar uma rotina de tratamento de erro do teclado
-
-        print("\nkeyboard error!");
-
-    	}  
-
-    	// espera nossa controladora termina
-	kbdc_wait(1);
-
-
-    	// Habilita IRQ1
-	//irq_enable(1);
-
-	
-	return 0;
-        
-
+    	// IRQ set Handler
+	// Enable IRQ Interrup
 }
 
 
@@ -200,7 +173,7 @@ UINTN keyboard_install(){
 // TODO: 
 // O Bit 7 (0x80) na scancode lido, nos informa se a tecla foi precionada ou solta  		
 // Exemplo: O shift left quando precionado gera o scancode 0x2A quando solto 0xAA (0x2A + 0x80 = 0xAA)
-VOID keyboard_handler(VOID){
+void keyboard_handler(void){
 	
 	if(count >= 2)count = 0;
 
@@ -273,5 +246,4 @@ VOID keyboard_handler(VOID){
 
  
 }
-
 
